@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TokenVoteDAO</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: #141b2b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Poppins', system-ui, sans-serif;
+      color: #ffffff;
+      -webkit-font-smoothing: antialiased;
+      background: #141b2b;
+    }
+    .welcome-shell {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px 24px 34px;
+    }
+    .welcome-wrap {
+      width: 100%;
+      max-width: 980px;
+      text-align: center;
+    }
+    .brand-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 18px;
+      margin: 0 auto 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #6690ff 0%, #5f6bea 100%);
+    }
+    .brand-icon svg {
+      width: 31px;
+      height: 31px;
+      display: block;
+    }
+    .title {
+      margin: 0;
+      font-size: clamp(54px, 6vw, 68px);
+      line-height: 1.02;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: #fbfbfb;
+    }
+    .subtitle {
+      margin: 18px 0 0;
+      font-size: 21px;
+      line-height: 1.35;
+      font-weight: 700;
+      color: #d8dbe3;
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .intro {
+      max-width: 760px;
+      margin: 24px auto 0;
+      font-size: 18px;
+      line-height: 1.52;
+      font-weight: 700;
+      color: #aeb7c8;
+    }
+    .feature-grid {
+      margin: 56px auto 0;
+      width: min(100%, 672px);
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 24px;
+    }
+    .feature-card {
+      min-height: 230px;
+      text-align: left;
+      border-radius: 16px;
+      border: 1px solid rgba(74, 92, 121, 0.42);
+      background: rgba(30, 41, 59, 0.56);
+      padding: 24px 24px 22px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.015);
+    }
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .feature-icon i {
+      width: 22px;
+      height: 22px;
+    }
+    .feature-icon.secure {
+      background: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+    }
+    .feature-icon.democratic {
+      background: rgba(16, 185, 129, 0.18);
+      color: #10b981;
+    }
+    .feature-icon.efficient {
+      background: rgba(6, 182, 212, 0.18);
+      color: #06b6d4;
+    }
+    .feature-title {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.25;
+      font-weight: 700;
+      color: #ffffff;
+    }
+    .feature-copy {
+      margin: 12px 0 0;
+      font-size: 15px;
+      line-height: 1.38;
+      font-weight: 700;
+      color: #9ea9bc;
+    }
+    .stats-grid {
+      margin: 48px auto 0;
+      width: min(100%, 672px);
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+    .stat-card {
+      min-height: 90px;
+      border-radius: 16px;
+      border: 1px solid rgba(74, 92, 121, 0.42);
+      background: rgba(30, 41, 59, 0.56);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 10px;
+    }
+    .stat-label {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.2;
+      font-weight: 700;
+      color: #aab3c4;
+    }
+    .stat-value {
+      margin: 12px 0 0;
+      font-size: 18px;
+      line-height: 1;
+      font-weight: 800;
+    }
+    .stat-blue { color: #5ca3ff; }
+    .stat-green { color: #34e0b1; }
+    .stat-cyan { color: #27d2f3; }
+    .stat-amber { color: #ffc83c; }
+    .cta {
+      margin-top: 52px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      min-width: 296px;
+      height: 58px;
+      padding: 0 28px;
+      border-radius: 10px;
+      border: 0;
+      text-decoration: none;
+      font-size: 17px;
+      line-height: 1;
+      font-weight: 700;
+      color: #ffffff;
+      background: linear-gradient(90deg, #4388f6 0%, #6762ea 100%);
+      box-shadow: 0 14px 28px rgba(67, 136, 246, 0.14);
+    }
+    .cta i {
+      width: 20px;
+      height: 20px;
+    }
+    @media (max-width: 860px) {
+      .feature-grid,
+      .stats-grid {
+        width: 100%;
+      }
+    }
+    @media (max-width: 760px) {
+      .welcome-shell {
+        padding: 28px 18px 32px;
+      }
+      .title {
+        font-size: 44px;
+      }
+      .subtitle {
+        font-size: 18px;
+        gap: 10px;
+      }
+      .intro {
+        font-size: 16px;
+      }
+      .feature-grid {
+        grid-template-columns: 1fr;
+      }
+      .feature-card {
+        min-height: 0;
+      }
+      .stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .cta {
+        min-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="welcome-shell">
+    <section class="welcome-wrap">
+      <div class="brand-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="10" fill="#1F2937" stroke="#111827" stroke-width="0.5"></circle>
+          <path d="M12 3V10M12 14V21" stroke="#f3f4f6" stroke-width="2" stroke-linecap="round"></path>
+          <path d="M16 6.5L8 12.5" stroke="#f3f4f6" stroke-width="1.5" stroke-linecap="round"></path>
+          <path d="M16 17.5L8 11.5" stroke="#f3f4f6" stroke-width="1.5" stroke-linecap="round"></path>
+        </svg>
+      </div>
+
+      <h1 class="title">TokenVoteDAO</h1>
+      <p class="subtitle">
+        <span>Decentralized</span>
+        <span>Governance</span>
+      </p>
+      <p class="intro">Stake your governance tokens to vote on proposals. Every token equals one vote. Transparent, fair, and fully on-chain governance.</p>
+
+      <div class="feature-grid">
+        <article class="feature-card">
+          <div class="feature-icon secure"><i data-lucide="shield-check"></i></div>
+          <h2 class="feature-title">Secure</h2>
+          <p class="feature-copy">On-chain voting with immutable records and transparent audit trails.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon democratic"><i data-lucide="users"></i></div>
+          <h2 class="feature-title">Democratic</h2>
+          <p class="feature-copy">One token, one vote. Equal voting power for all token holders.</p>
+        </article>
+        <article class="feature-card">
+          <div class="feature-icon efficient"><i data-lucide="zap"></i></div>
+          <h2 class="feature-title">Efficient</h2>
+          <p class="feature-copy">Fast proposal creation and real-time vote counting.</p>
+        </article>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <p class="stat-label">Active</p>
+          <p class="stat-value stat-blue">0</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Total Votes</p>
+          <p class="stat-value stat-green">0</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Power Cast</p>
+          <p class="stat-value stat-cyan">0</p>
+        </div>
+        <div class="stat-card">
+          <p class="stat-label">Closed</p>
+          <p class="stat-value stat-amber">0</p>
+        </div>
+      </div>
+
+      <a href="dashboard.html" class="cta">
+        <span>Enter DAO Dashboard</span>
+        <i data-lucide="arrow-right"></i>
+      </a>
+    </section>
+  </main>
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>
