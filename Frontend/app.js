@@ -259,11 +259,14 @@ async function loadProposals() {
     const proposals = await contract.getProposals();
     const address = signer ? await signer.getAddress().catch(() => null) : null;
 
-    proposalCache = await Promise.all(proposals.map(async (proposal, index) => {
-      const forVotes = Number(ethers.formatEther(proposal.forVotes));
-      const againstVotes = Number(ethers.formatEther(proposal.againstVotes));
+    proposalCache = await Promise.all(proposals.map(async (p, index) => {
+      // Ethers v6 result mapping can be by index or by property name
+      const title = p.title || p[0];
+      const description = p.description || p[1];
+      const forVotes = Number(ethers.formatEther(p.forVotes || p[2]));
+      const againstVotes = Number(ethers.formatEther(p.againstVotes || p[3]));
       const total = forVotes + againstVotes;
-      const deadline = Number(proposal.deadline);
+      const deadline = Number(p.deadline || p[4]);
       const isActive = Date.now() / 1000 < deadline;
 
       if (address) {
@@ -277,8 +280,8 @@ async function loadProposals() {
 
       return {
         index,
-        title: proposal.title,
-        description: proposal.description,
+        title,
+        description,
         forVotes,
         againstVotes,
         total,
@@ -294,8 +297,12 @@ async function loadProposals() {
     renderProposals();
   } catch (error) {
     console.error("Load error:", error);
-    showToast("Load failed", "Could not fetch proposals from the contract.", "error");
-    renderEmptyState("Unable to load proposals", "Check wallet, local chain, and contract deployment.");
+    let errorMsg = "Could not fetch proposals from the contract.";
+    if (error.code === "NETWORK_ERROR") errorMsg = "Network error: Is Hardhat node running?";
+    if (error.code === "BAD_DATA") errorMsg = "ABI mismatch or corrupt data.";
+
+    showToast("Load failed", errorMsg, "error");
+    renderEmptyState("Unable to load proposals", errorMsg + " Check console for details.");
   }
 }
 
