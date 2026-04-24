@@ -284,7 +284,8 @@ async function loadProposals() {
         total,
         deadline,
         isActive,
-        supportPercent: total ? Math.round((forVotes / total) * 100) : 0
+        supportPercent: total ? Math.round((forVotes / total) * 100) : 0,
+        againstPercent: total ? Math.round((againstVotes / total) * 100) : 0
       };
     }));
 
@@ -338,8 +339,9 @@ function renderProposals() {
           <div class="shrink-0 text-sm font-semibold text-slate-400">${deadlineLabel}</div>
         </div>
 
-        <div class="mt-5 h-2 overflow-hidden rounded-full bg-slate-800">
-          <div class="h-full rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400" style="width:${proposal.supportPercent}%;"></div>
+        <div class="mt-5 h-2 overflow-hidden rounded-full bg-slate-800 flex">
+          <div class="h-full bg-gradient-to-r from-emerald-400 to-cyan-400" style="width:${proposal.supportPercent}%;"></div>
+          <div class="h-full bg-rose-500" style="width:${proposal.againstPercent}%;"></div>
         </div>
 
         <div class="mt-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
