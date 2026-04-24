@@ -20,10 +20,13 @@ const networks = {
   hardhat: {},
   localhost: {
     url: "http://127.0.0.1:8545",
-    chainId: 31337,                                          // ✅ Added
-    accounts: normalizedPrivateKey ? [normalizedPrivateKey] : [], // ✅ Added
+    chainId: 31337,
   },
 };
+
+if (normalizedPrivateKey) {
+  networks.localhost.accounts = [normalizedPrivateKey];
+}
 
 // Conditionally add Sepolia
 if (SEPOLIA_RPC_URL && normalizedPrivateKey) {              // ✅ Check both
