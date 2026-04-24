@@ -1,19 +1,30 @@
-const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // ⚠️ Update after every redeploy
+const contractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+const tokenAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // ⚠️ Update after every redeploy
 
 const abi = [
+  "constructor(address _token)",
   "function createProposal(string memory _title, string memory _desc, uint duration) public",
   "function vote(uint index, bool support) public",
   "function getProposals() public view returns (tuple(string title, string description, uint forVotes, uint againstVotes, uint deadline)[])",
   "function proposalCount() public view returns (uint)",
   "function isActive(uint index) public view returns (bool)",
   "function hasVoted(uint, address) public view returns (bool)",
+  "function governanceToken() public view returns (address)",
   "event ProposalCreated(uint indexed id, string title, uint deadline)",
-  "event Voted(uint indexed id, address voter, bool support)"
+  "event Voted(uint indexed id, address voter, bool support, uint weight)"
+];
+
+const tokenAbi = [
+  "function balanceOf(address account) public view returns (uint256)",
+  "function decimals() public view returns (uint8)",
+  "function symbol() public view returns (string)",
+  "function name() public view returns (string)"
 ];
 
 let provider;
 let signer;
 let contract;
+let tokenContract;
 let isConnecting = false;
 let currentFilter = "active";
 let proposalCache = [];
@@ -147,7 +158,6 @@ function bindWalletEvents() {
   });
 
   window.ethereum.on("chainChanged", async () => {
-    // ✅ Reload page on network change - most reliable fix
     window.location.reload();
   });
 }
@@ -168,16 +178,7 @@ async function initializeFromExistingWallet() {
 
     signer = await provider.getSigner();
     const network = await provider.getNetwork();
-    currentBalance = await getWalletBalance();
-    setWalletState(accounts[0], false);
-
-    // ✅ FIX: Use Number() instead of BigInt comparison
     const chainId = Number(network.chainId);
-    console.log("=== INIT DEBUG ===");
-    console.log("Chain ID (number):", chainId);
-    console.log("Expected: 31337");
-    console.log("Match:", chainId === 31337);
-    console.log("=================");
 
     if (chainId !== 31337) {
       const switched = await switchToLocalhost();
@@ -186,11 +187,14 @@ async function initializeFromExistingWallet() {
         renderEmptyState("Wrong network", "Switch MetaMask to Localhost 31337.");
         showToast("Wrong network", "Switch MetaMask to Localhost 31337.", "error");
       }
-      return; // If switched successfully, the chainChanged event will reload the page
+      return;
     }
 
     contract = new ethers.Contract(contractAddress, abi, signer);
-    console.log("✅ Contract initialized at:", contractAddress);
+    tokenContract = new ethers.Contract(tokenAddress, tokenAbi, signer);
+
+    currentBalance = await getWalletBalance();
+    setWalletState(accounts[0], false);
     await loadProposals();
   } catch (error) {
     console.error("Initialization error:", error);
@@ -201,19 +205,10 @@ async function initializeFromExistingWallet() {
 // ─── Create Proposal ─────────────────────────────────────────────────────────
 
 function handleCreateClick() {
-  console.log("=== DEBUG: New Proposal Clicked ===");
-  console.log("Contract:", contract);
-  console.log("Signer:", signer);
-  console.log("Address:", currentAddress);
-  console.log("===================================");
-
   if (!contract) {
-    console.warn("❌ Contract is null - wallet not connected or wrong network!");
     openWalletModal();
     return;
   }
-
-  console.log("✅ Contract found - opening create modal");
   openCreateModal();
 }
 
@@ -265,8 +260,8 @@ async function loadProposals() {
     const address = signer ? await signer.getAddress().catch(() => null) : null;
 
     proposalCache = await Promise.all(proposals.map(async (proposal, index) => {
-      const forVotes = Number(proposal.forVotes);
-      const againstVotes = Number(proposal.againstVotes);
+      const forVotes = Number(ethers.formatEther(proposal.forVotes));
+      const againstVotes = Number(ethers.formatEther(proposal.againstVotes));
       const total = forVotes + againstVotes;
       const deadline = Number(proposal.deadline);
       const isActive = Date.now() / 1000 < deadline;
@@ -349,9 +344,9 @@ function renderProposals() {
 
         <div class="mt-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div class="flex flex-wrap items-center gap-5 text-sm font-semibold text-slate-300">
-            <span>For <span class="text-emerald-400">${proposal.forVotes}</span></span>
-            <span>Against <span class="text-rose-400">${proposal.againstVotes}</span></span>
-            <span>Total <span class="text-cyan-400">${proposal.total}</span></span>
+            <span>For <span class="text-emerald-400">${proposal.forVotes.toLocaleString()}</span></span>
+            <span>Against <span class="text-rose-400">${proposal.againstVotes.toLocaleString()}</span></span>
+            <span>Total <span class="text-cyan-400">${proposal.total.toLocaleString()}</span></span>
           </div>
           <div class="flex gap-3">
             <button
@@ -394,12 +389,20 @@ async function vote(index, support, btn) {
       return;
     }
 
+    const balance = await tokenContract.balanceOf(address);
+    if (balance === 0n) {
+      showToast("No voting power", "You need GOV tokens to vote.", "error");
+      return;
+    }
+
     const tx = await contract.vote(index, support);
     showToast("Vote submitted", "Waiting for vote confirmation.", "info");
     await tx.wait();
     myVotes.add(index);
     showToast("Vote confirmed", `You voted ${support ? "FOR ✅" : "AGAINST ❌"} the proposal.`, "success");
     await loadProposals();
+    currentBalance = await getWalletBalance();
+    setWalletState(address, false);
   } catch (error) {
     console.error("Vote error:", error);
     if (error?.reason) {
@@ -421,7 +424,7 @@ async function switchToLocalhost() {
   try {
     await window.ethereum.request({
       method: 'wallet_switchEthereumChain',
-      params: [{ chainId: '0x7A69' }], // 31337 in hex
+      params: [{ chainId: '0x7A69' }],
     });
     return true;
   } catch (error) {
@@ -468,14 +471,7 @@ async function connectMetaMask() {
     provider = new ethers.BrowserProvider(window.ethereum);
     signer = await provider.getSigner();
     const network = await provider.getNetwork();
-
-    // ✅ FIX: Use Number() instead of BigInt comparison
     const chainId = Number(network.chainId);
-    console.log("=== CONNECT DEBUG ===");
-    console.log("Chain ID (number):", chainId);
-    console.log("Expected: 31337");
-    console.log("Match:", chainId === 31337);
-    console.log("====================");
 
     if (chainId !== 31337) {
       const switched = await switchToLocalhost();
@@ -484,10 +480,12 @@ async function connectMetaMask() {
         showToast("Wrong network", "Switch MetaMask to Localhost 31337.", "error");
         renderEmptyState("Wrong network", "Switch MetaMask to Localhost 31337.");
       }
-      return; // Will reload via event listener if switched
+      return;
     }
 
     contract = new ethers.Contract(contractAddress, abi, signer);
+    tokenContract = new ethers.Contract(tokenAddress, tokenAbi, signer);
+
     const address = await signer.getAddress();
     currentBalance = await getWalletBalance();
     setWalletState(address, false);
@@ -498,8 +496,6 @@ async function connectMetaMask() {
     console.error("Connection error:", error);
     if (error.code === 4001) {
       showToast("Connection rejected", "The wallet request was rejected.", "error");
-    } else if (error.code === -32002) {
-      showToast("Request pending", "Open MetaMask to continue.", "error");
     } else {
       showToast("Connection failed", "Unable to connect the wallet.", "error");
     }
@@ -509,26 +505,14 @@ async function connectMetaMask() {
 }
 
 function connectFallbackWallet(type) {
-  const labelMap = {
-    coinbase: "Coinbase Wallet",
-    phantom: "Phantom",
-    coin98: "Coin98 Wallet",
-    ultimate: "Ultimate Wallet",
-    gem: "Gem Wallet",
-    demo: "Demo Wallet"
-  };
-
   const address = demoWallets[Math.floor(Math.random() * demoWallets.length)];
   signer = undefined;
   contract = undefined;
+  tokenContract = undefined;
   currentBalance = Math.floor(Math.random() * 9000) + 1200;
   setWalletState(address, true);
   closeWalletModal();
-  showToast(
-    labelMap[type] || "Wallet selected",
-    `${labelMap[type] || "Wallet"} selected. Use MetaMask for real on-chain actions.`,
-    "info"
-  );
+  showToast("Demo Wallet", `Demo wallet selected. Use MetaMask for real on-chain actions.`, "info");
 }
 
 function disconnectWallet() {
@@ -544,6 +528,7 @@ function disconnectWallet() {
 function resetWalletState() {
   signer = undefined;
   contract = undefined;
+  tokenContract = undefined;
   proposalCache = [];
   currentBalance = 0;
   currentAddress = "";
@@ -615,11 +600,11 @@ function setWalletState(address, fallback = false) {
 }
 
 async function getWalletBalance() {
-  if (!provider || !signer) return 0;
+  if (!tokenContract || !signer) return 0;
   try {
     const address = await signer.getAddress();
-    const balance = await provider.getBalance(address);
-    return Math.max(0, Math.round(Number(ethers.formatEther(balance)) * 1000));
+    const balance = await tokenContract.balanceOf(address);
+    return Number(ethers.formatEther(balance));
   } catch (error) {
     console.error("Balance read error:", error);
     return 0;
@@ -635,8 +620,8 @@ function updateStats(proposals) {
 
   setText("activeCount", active);
   setText("closedCount", closed);
-  setText("totalVotes", totalVotes);
-  setText("powerCast", totalVotes);
+  setText("totalVotes", totalVotes.toLocaleString());
+  setText("powerCast", totalVotes.toLocaleString());
 }
 
 function updateBadges(proposals) {
@@ -700,7 +685,7 @@ function formatClosedTime(deadline) {
 }
 
 function formatTokenBalance(value) {
-  return Number(value || 0).toLocaleString();
+  return Math.floor(value || 0).toLocaleString();
 }
 
 function shortAddress(address) {
